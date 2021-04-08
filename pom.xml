@@ -34,17 +34,181 @@
   </scm>
 
   <properties>
-    <scalecube-commons.version>1.0.13</scalecube-commons.version>
+    <aeron.version>1.32.0</aeron.version>
+    <agrona.version>1.9.0</agrona.version>
+    <byte-buddy.version>1.10.19</byte-buddy.version>
 
     <slf4j.version>1.7.30</slf4j.version>
-    <log4j.version>2.13.2</log4j.version>
-    <reactor.version>2020.0.5</reactor.version>
-    <jackson.version>2.11.0</jackson.version>
+    <reactor.version>Dysprosium-SR9</reactor.version>
 
-    <mockito-junit-jupiter.version>2.27.0</mockito-junit-jupiter.version>
-    <junit-jupiter.version>5.1.1</junit-jupiter.version>
-    <hamcrest.version>1.3</hamcrest.version>
+    <log4j.version>2.13.2</log4j.version>
+    <mockito.version>3.3.3</mockito.version>
+    <junit.version>5.6.2</junit.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Aeron -->
+      <dependency>
+        <groupId>io.aeron</groupId>
+        <artifactId>aeron-agent</artifactId>
+        <version>${aeron.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.aeron</groupId>
+        <artifactId>aeron-driver</artifactId>
+        <version>${aeron.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.aeron</groupId>
+        <artifactId>aeron-client</artifactId>
+        <version>${aeron.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.aeron</groupId>
+        <artifactId>aeron-archive</artifactId>
+        <version>${aeron.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.aeron</groupId>
+        <artifactId>aeron-cluster</artifactId>
+        <version>${aeron.version}</version>
+      </dependency>
+      <!-- Agrona -->
+      <dependency>
+        <groupId>org.agrona</groupId>
+        <artifactId>agrona</artifactId>
+        <version>${agrona.version}</version>
+      </dependency>
+      <!-- Byte Buddy -->
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy</artifactId>
+        <version>${byte-buddy.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy-agent</artifactId>
+        <version>${byte-buddy.version}</version>
+      </dependency>
+      <!-- Reactor -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-bom</artifactId>
+        <version>${reactor.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Slf4j -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+      </dependency>
+      <!-- Log4j -->
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>${log4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- JUnit -->
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Mockito -->
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <version>${mockito.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>*</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Aeron -->
+    <dependency>
+      <groupId>io.aeron</groupId>
+      <artifactId>aeron-agent</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.aeron</groupId>
+      <artifactId>aeron-driver</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.aeron</groupId>
+      <artifactId>aeron-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.aeron</groupId>
+      <artifactId>aeron-archive</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.aeron</groupId>
+      <artifactId>aeron-cluster</artifactId>
+    </dependency>
+    <!-- Agrona -->
+    <dependency>
+      <groupId>org.agrona</groupId>
+      <artifactId>agrona</artifactId>
+    </dependency>
+    <!-- Byte Buddy -->
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy-agent</artifactId>
+    </dependency>
+    <!-- Reactor -->
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
+    </dependency>
+    <!-- Slf4j -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <!-- Tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <profiles>
     <profile>
