@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.scalecube</groupId>
+    <artifactId>scalecube-parent-pom</artifactId>
+    <version>0.2.19</version>
+  </parent>
+
+  <artifactId>scalecube-aeron-examples</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <repositories>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/scalecube/packages</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <scm>
+    <url>https://github.com/scalecube/aeron-examples</url>
+    <connection>scm:git:https://github.com/scalecube/aeron-examples.git</connection>
+    <developerConnection>scm:git:https://github.com/scalecube/aeron-examples.git
+    </developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <properties>
+    <scalecube-commons.version>1.0.13</scalecube-commons.version>
+
+    <slf4j.version>1.7.30</slf4j.version>
+    <log4j.version>2.13.2</log4j.version>
+    <reactor.version>2020.0.5</reactor.version>
+    <jackson.version>2.11.0</jackson.version>
+
+    <mockito-junit-jupiter.version>2.27.0</mockito-junit-jupiter.version>
+    <junit-jupiter.version>5.1.1</junit-jupiter.version>
+    <hamcrest.version>1.3</hamcrest.version>
+  </properties>
+
+  <profiles>
+    <profile>
+      <id>deploy2Github</id>
+      <distributionManagement>
+        <repository>
+          <id>github</id>
+          <name>GitHub Packages</name>
+          <url>https://maven.pkg.github.com/scalecube/aeron-examples</url>
+        </repository>
+      </distributionManagement>
+    </profile>
+    <profile>
+      <id>deploy2Maven</id>
+      <distributionManagement>
+        <repository>
+          <id>ossrh</id>
+          <name>Central Repository OSSRH</name>
+          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+      </distributionManagement>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <artifactId>maven-source-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+          </plugin>
+          <plugin>
+            <artifactId>maven-gpg-plugin</artifactId>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
+</project>
