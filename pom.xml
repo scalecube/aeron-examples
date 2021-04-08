@@ -12,7 +12,6 @@
 
   <artifactId>scalecube-aeron-examples</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <packaging>pom</packaging>
 
   <repositories>
     <repository>
@@ -39,11 +38,9 @@
     <byte-buddy.version>1.10.19</byte-buddy.version>
 
     <slf4j.version>1.7.30</slf4j.version>
-    <reactor.version>Dysprosium-SR9</reactor.version>
-
     <log4j.version>2.13.2</log4j.version>
-    <mockito.version>3.3.3</mockito.version>
-    <junit.version>5.6.2</junit.version>
+
+    <checkstyle.skip>true</checkstyle.skip>
   </properties>
 
   <dependencyManagement>
@@ -91,14 +88,6 @@
         <artifactId>byte-buddy-agent</artifactId>
         <version>${byte-buddy.version}</version>
       </dependency>
-      <!-- Reactor -->
-      <dependency>
-        <groupId>io.projectreactor</groupId>
-        <artifactId>reactor-bom</artifactId>
-        <version>${reactor.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
       <!-- Slf4j -->
       <dependency>
         <groupId>org.slf4j</groupId>
@@ -112,26 +101,6 @@
         <version>${log4j.version}</version>
         <type>pom</type>
         <scope>import</scope>
-      </dependency>
-      <!-- JUnit -->
-      <dependency>
-        <groupId>org.junit</groupId>
-        <artifactId>junit-bom</artifactId>
-        <version>${junit.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <!-- Mockito -->
-      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-junit-jupiter</artifactId>
-        <version>${mockito.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>net.bytebuddy</groupId>
-            <artifactId>*</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -172,41 +141,19 @@
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy-agent</artifactId>
     </dependency>
-    <!-- Reactor -->
-    <dependency>
-      <groupId>io.projectreactor</groupId>
-      <artifactId>reactor-core</artifactId>
-    </dependency>
     <!-- Slf4j -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
-    <!-- Tests -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-junit-jupiter</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.projectreactor</groupId>
-      <artifactId>reactor-test</artifactId>
-      <scope>test</scope>
-    </dependency>
+    <!-- Log4j -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
