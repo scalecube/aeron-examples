@@ -12,6 +12,7 @@ import io.aeron.archive.Archive;
 import io.aeron.archive.client.AeronArchive;
 import io.aeron.archive.status.RecordingPos;
 import io.aeron.logbuffer.FragmentHandler;
+import io.micrometer.core.instrument.Counter;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -325,6 +326,28 @@ public class AeronHelper {
     final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
     final long result = publication.offer(buffer, 0, length);
     verifyResult(publication, result);
+  }
+
+  /**
+   * Sends a message and verifies result.
+   *
+   * @param publication publication
+   * @param i just i
+   * @param requestBackpressureCounter requestBackpressureCounter
+   */
+  public static void sendMessageQuietly(
+      Publication publication, long i, Counter requestBackpressureCounter) {
+    final UnsafeBuffer buffer = new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
+    final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
+    final long result = publication.offer(buffer, 0, length);
+    if (result == Publication.BACK_PRESSURED) {
+      if (requestBackpressureCounter != null) {
+        requestBackpressureCounter.increment();
+      }
+    }
+    if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
+      throw new RuntimeException("unexpected publication state: " + result);
+    }
   }
 
   /**

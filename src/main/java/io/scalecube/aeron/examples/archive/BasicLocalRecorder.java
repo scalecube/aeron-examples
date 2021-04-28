@@ -3,7 +3,6 @@ package io.scalecube.aeron.examples.archive;
 import static io.aeron.CommonContext.IPC_MEDIA;
 import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
-import static io.scalecube.aeron.examples.AeronHelper.NUMBER_OF_MESSAGES;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
 import static io.scalecube.aeron.examples.AeronHelper.awaitRecordingPosCounter;
 import static io.scalecube.aeron.examples.AeronHelper.controlResponseChannel;
@@ -12,9 +11,12 @@ import static io.scalecube.aeron.examples.AeronHelper.printArchiveContext;
 import static io.scalecube.aeron.examples.AeronHelper.printRecordedPublication;
 
 import io.aeron.Aeron;
+import io.aeron.ChannelUri;
 import io.aeron.ChannelUriStringBuilder;
 import io.aeron.CommonContext;
 import io.aeron.Publication;
+import io.aeron.Subscription;
+import io.aeron.agent.EventLogAgent;
 import io.aeron.archive.Archive;
 import io.aeron.archive.ArchiveThreadingMode;
 import io.aeron.archive.client.AeronArchive;
@@ -25,9 +27,10 @@ import io.aeron.logbuffer.LogBufferDescriptor;
 import io.scalecube.aeron.examples.AeronHelper;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
+import net.bytebuddy.agent.ByteBuddyAgent;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.SigInt;
 import org.agrona.concurrent.status.AtomicCounter;
@@ -35,11 +38,7 @@ import org.agrona.concurrent.status.CountersReader;
 
 public class BasicLocalRecorder {
 
-  public static final String CHANNEL =
-      new ChannelUriStringBuilder()
-          .media(IPC_MEDIA)
-          .endpoint(String.join("-", "ipc_endpoint", UUID.randomUUID().toString()))
-          .build();
+  public static final String CHANNEL = new ChannelUriStringBuilder().media(IPC_MEDIA).build();
 
   public static final String RECORDING_EVENTS_CHANNEL_ENDPOINT = "localhost:8030";
   public static final String CONTROL_CHANNEL_ENDPOINT = "localhost:8010";
@@ -58,6 +57,11 @@ public class BasicLocalRecorder {
    * @param args args
    */
   public static void main(String[] args) throws InterruptedException {
+    System.setProperty("aeron.archive.max.concurrent.replays", "1");
+    System.setProperty("aeron.event.log", "admin");
+    System.setProperty("aeron.event.archive.log", "all");
+    EventLogAgent.agentmain("", ByteBuddyAgent.install());
+
     SigInt.register(BasicLocalRecorder::close);
 
     Path aeronPath = Paths.get(CommonContext.generateRandomDirName());
@@ -118,14 +122,35 @@ public class BasicLocalRecorder {
 
     printRecordedPublication(aeronArchive, publication, recordingPosCounterId, recordingId);
 
-    for (long i = 0; i < NUMBER_OF_MESSAGES; i++) {
-      AeronHelper.recordMessage(counters, publication, i);
-      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+    long i = 0;
+    AeronHelper.recordMessage(counters, publication, i);
+    AeronHelper.recordMessage(counters, publication, i);
+    AeronHelper.recordMessage(counters, publication, i);
+
+    for (int k = 0; ; k++) {
+      RecordingDescriptor rd =
+          AeronArchiveUtil.findLastRecording(aeronArchive, rd1 -> rd1.streamId == STREAM_ID);
+
+      final long replaySessionId =
+          aeronArchive.startReplay(rd.recordingId, 0, Long.MAX_VALUE, CHANNEL, STREAM_ID);
+
+      final Subscription subscription =
+          aeron.addSubscription(ChannelUri.addSessionId(CHANNEL, (int) replaySessionId), STREAM_ID);
+
+      while (!subscription.isConnected()) {
+        LockSupport.parkNanos(1);
+      }
+
+      System.out.println(k + " | ### subscription : " + subscription);
+      System.out.println(k + " | ### closing subscription : " + subscription);
+
+      int finalK = k;
+      CloseHelper.close(
+          throwable -> System.err.println(finalK + " | [close][error] throwable : " + throwable),
+          subscription);
+
+      TimeUnit.SECONDS.sleep(1);
     }
-
-    System.out.println("Done sending");
-
-    close();
   }
 
   private static void close() {

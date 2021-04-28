@@ -36,6 +36,11 @@
     <aeron.version>1.32.0</aeron.version>
     <agrona.version>1.9.0</agrona.version>
     <byte-buddy.version>1.10.19</byte-buddy.version>
+    <micrometer.version>1.6.6</micrometer.version>
+    <dropwizard.version>2.0.21</dropwizard.version>
+    <guava.version>30.1.1-jre</guava.version>
+    <classmate.version>1.5.1</classmate.version>
+    <checker-qual.version>3.10.0</checker-qual.version>
 
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>2.13.2</log4j.version>
@@ -102,6 +107,34 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Micrometer -->
+      <dependency>
+        <groupId>io.micrometer</groupId>
+        <artifactId>micrometer-core</artifactId>
+        <version>${micrometer.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.dropwizard</groupId>
+        <artifactId>dropwizard-bom</artifactId>
+        <version>${dropwizard.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml</groupId>
+        <artifactId>classmate</artifactId>
+        <version>${classmate.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.checkerframework</groupId>
+        <artifactId>checker-qual</artifactId>
+        <version>${checker-qual.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -154,6 +187,15 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
+    </dependency>
+    <!-- Micrometer -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-metrics</artifactId>
     </dependency>
   </dependencies>
 
