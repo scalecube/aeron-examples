@@ -29,6 +29,9 @@ public class AeronHelper {
   public static final FragmentHandler NOOP_FRAGMENT_HANDLER =
       (buffer, offset, length, header) -> {};
 
+  public static final UnsafeBuffer BUFFER =
+      new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
+
   public static final int STREAM_ID = 1001;
   public static final int NUMBER_OF_MESSAGES = (int) 1e6;
   public static final int FRAGMENT_LIMIT = 100;
@@ -337,9 +340,8 @@ public class AeronHelper {
    */
   public static void sendMessageQuietly(
       Publication publication, Counter requestCounter, Counter requestBackpressureCounter) {
-    final UnsafeBuffer buffer = new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
-    buffer.putLong(0, System.nanoTime());
-    final long result = publication.offer(buffer, 0, 256);
+    BUFFER.putLong(0, System.nanoTime());
+    final long result = publication.offer(BUFFER, 0, 256);
 
     if (result > 0) {
       if (requestCounter != null) {
