@@ -50,6 +50,11 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>net.openhft</groupId>
+        <artifactId>affinity</artifactId>
+        <version>3.21ea1</version>
+      </dependency>
       <!-- Aeron -->
       <dependency>
         <groupId>io.aeron</groupId>
@@ -139,6 +144,10 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency>
+      <groupId>net.openhft</groupId>
+      <artifactId>affinity</artifactId>
+    </dependency>
     <!-- Aeron -->
     <dependency>
       <groupId>io.aeron</groupId>

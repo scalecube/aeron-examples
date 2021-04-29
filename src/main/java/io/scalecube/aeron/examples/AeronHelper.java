@@ -332,19 +332,31 @@ public class AeronHelper {
    * Sends a message and verifies result.
    *
    * @param publication publication
-   * @param i just i
+   * @param requestCounter requestCounter
    * @param requestBackpressureCounter requestBackpressureCounter
    */
   public static void sendMessageQuietly(
-      Publication publication, long i, Counter requestBackpressureCounter) {
+      Publication publication, Counter requestCounter, Counter requestBackpressureCounter) {
     final UnsafeBuffer buffer = new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
-    final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
-    final long result = publication.offer(buffer, 0, length);
+    buffer.putLong(0, System.nanoTime());
+    final long result = publication.offer(buffer, 0, 256);
+
+    if (result > 0) {
+      if (requestCounter != null) {
+        requestCounter.increment();
+      }
+    }
+
     if (result == Publication.BACK_PRESSURED) {
       if (requestBackpressureCounter != null) {
         requestBackpressureCounter.increment();
       }
     }
+
+    if (result == Publication.ADMIN_ACTION) {
+      System.err.println("Publication.ADMIN_ACTION detected");
+    }
+
     if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
       throw new RuntimeException("unexpected publication state: " + result);
     }

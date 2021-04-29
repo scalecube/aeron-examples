@@ -54,8 +54,7 @@ public class SimplePublisher {
     printPublication(publication);
 
     for (long i = 0; ; i++) {
-      AeronHelper.sendMessageQuietly(publication, i, requestBackpressureCounter);
-      requestCounter.increment();
+      AeronHelper.sendMessageQuietly(publication, requestCounter, requestBackpressureCounter);
     }
   }
 

@@ -12,7 +12,9 @@ import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
 import io.aeron.logbuffer.FragmentHandler;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.dropwizard.DropwizardMeterRegistry;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.IdleStrategy;
@@ -51,6 +53,14 @@ public class SimpleSubscriber {
 
     Counter requestCounter = meterRegistry.counter("request");
 
+    DistributionSummary latencyDistributionSummary =
+        DistributionSummary.builder("latency")
+            .minimumExpectedValue((double) (10 * 1000))
+            .maximumExpectedValue((double) Duration.ofSeconds(10).toNanos())
+            .publishPercentiles(0.1, 0.2, 0.5, 0.75, 0.9, 0.99)
+            .baseUnit("ns")
+            .register(meterRegistry);
+
     String channel = new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
     Subscription subscription =
         aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
@@ -58,7 +68,11 @@ public class SimpleSubscriber {
     printSubscription(subscription);
 
     final FragmentHandler fragmentHandler =
-        (buffer, offset, length, header) -> requestCounter.increment();
+        (buffer, offset, length, header) -> {
+          final long l = buffer.getLong(offset);
+          latencyDistributionSummary.record(System.nanoTime() - l);
+          requestCounter.increment();
+        };
     FragmentAssembler fragmentAssembler = new FragmentAssembler(fragmentHandler);
     IdleStrategy idleStrategy = new SleepingMillisIdleStrategy(1);
 
