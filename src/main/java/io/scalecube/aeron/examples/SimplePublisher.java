@@ -28,7 +28,7 @@ public class SimplePublisher {
    *
    * @param args args
    */
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) {
     SigInt.register(SimplePublisher::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
