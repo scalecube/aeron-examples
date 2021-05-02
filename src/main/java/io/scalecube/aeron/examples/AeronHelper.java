@@ -11,6 +11,7 @@ import io.aeron.Subscription;
 import io.aeron.archive.Archive;
 import io.aeron.archive.client.AeronArchive;
 import io.aeron.archive.status.RecordingPos;
+import io.aeron.logbuffer.BufferClaim;
 import io.aeron.logbuffer.FragmentHandler;
 import io.micrometer.core.instrument.Counter;
 import java.io.File;
@@ -19,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.StringJoiner;
 import org.agrona.BufferUtil;
+import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.YieldingIdleStrategy;
@@ -29,8 +31,7 @@ public class AeronHelper {
   public static final FragmentHandler NOOP_FRAGMENT_HANDLER =
       (buffer, offset, length, header) -> {};
 
-  public static final UnsafeBuffer BUFFER =
-      new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
+  private static final BufferClaim BUFFER_CLAIM = new BufferClaim();
 
   public static final int STREAM_ID = 1001;
   public static final int NUMBER_OF_MESSAGES = (int) 1e6;
@@ -340,27 +341,37 @@ public class AeronHelper {
    */
   public static void sendMessageQuietly(
       Publication publication, Counter requestCounter, Counter requestBackpressureCounter) {
-    BUFFER.putLong(0, System.nanoTime());
-    final long result = publication.offer(BUFFER, 0, 256);
 
-    if (result > 0) {
-      if (requestCounter != null) {
-        requestCounter.increment();
+    final long nanoTime = System.nanoTime();
+
+    for (; ; ) {
+      final long result = publication.tryClaim(256, BUFFER_CLAIM);
+      if (result > 0) {
+
+        final MutableDirectBuffer buffer = BUFFER_CLAIM.buffer();
+        buffer.putLong(BUFFER_CLAIM.offset(), nanoTime);
+        BUFFER_CLAIM.commit();
+
+        if (requestCounter != null) {
+          requestCounter.increment();
+        }
+
+        return;
       }
-    }
 
-    if (result == Publication.BACK_PRESSURED) {
-      if (requestBackpressureCounter != null) {
-        requestBackpressureCounter.increment();
+      if (result == Publication.BACK_PRESSURED) {
+        if (requestBackpressureCounter != null) {
+          requestBackpressureCounter.increment();
+        }
       }
-    }
 
-    if (result == Publication.ADMIN_ACTION) {
-      System.err.println("Publication.ADMIN_ACTION detected");
-    }
+      if (result == Publication.ADMIN_ACTION) {
+        System.err.println("Publication.ADMIN_ACTION detected");
+      }
 
-    if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
-      throw new RuntimeException("unexpected publication state: " + result);
+      if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
+        throw new RuntimeException("unexpected publication state: " + result);
+      }
     }
   }
 
