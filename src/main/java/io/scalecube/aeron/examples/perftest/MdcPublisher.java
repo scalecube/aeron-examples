@@ -56,6 +56,7 @@ public class MdcPublisher {
             .media(UDP_MEDIA)
             .controlMode(MDC_CONTROL_MODE_DYNAMIC)
             .controlEndpoint(CONTROL_ENDPOINT)
+            .flowControl("min")
             .build();
 
     ExclusivePublication publication =
