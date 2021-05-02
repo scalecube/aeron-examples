@@ -18,6 +18,7 @@ import io.micrometer.core.instrument.dropwizard.DropwizardMeterRegistry;
 import io.scalecube.aeron.examples.AeronHelper;
 import io.scalecube.aeron.examples.MeterRegistries;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.BusySpinIdleStrategy;
@@ -39,6 +40,9 @@ public class MdcSubscriber {
    */
   public static void main(String[] args) {
     SigInt.register(MdcSubscriber::close);
+
+    final Long groupTag =
+        Optional.ofNullable(System.getProperty("groupTag")).map(Long::parseLong).orElse(null);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -70,6 +74,7 @@ public class MdcSubscriber {
             .controlMode(MDC_CONTROL_MODE_DYNAMIC)
             .controlEndpoint(CONTROL_ENDPOINT)
             .endpoint("localhost:0")
+            .groupTag(groupTag)
             .build();
 
     Subscription subscription =
