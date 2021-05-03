@@ -344,34 +344,32 @@ public class AeronHelper {
 
     final long nanoTime = System.nanoTime();
 
-    for (; ; ) {
-      final long result = publication.tryClaim(256, BUFFER_CLAIM);
-      if (result > 0) {
+    final long result = publication.tryClaim(256, BUFFER_CLAIM);
 
-        final MutableDirectBuffer buffer = BUFFER_CLAIM.buffer();
-        buffer.putLong(BUFFER_CLAIM.offset(), nanoTime);
-        BUFFER_CLAIM.commit();
+    if (result > 0) {
+      final MutableDirectBuffer buffer = BUFFER_CLAIM.buffer();
+      buffer.putLong(BUFFER_CLAIM.offset(), nanoTime);
+      BUFFER_CLAIM.commit();
 
-        if (requestCounter != null) {
-          requestCounter.increment();
-        }
-
-        return;
+      if (requestCounter != null) {
+        requestCounter.increment();
       }
 
-      if (result == Publication.BACK_PRESSURED) {
-        if (requestBackpressureCounter != null) {
-          requestBackpressureCounter.increment();
-        }
-      }
+      return;
+    }
 
-      if (result == Publication.ADMIN_ACTION) {
-        System.err.println("Publication.ADMIN_ACTION detected");
+    if (result == Publication.BACK_PRESSURED) {
+      if (requestBackpressureCounter != null) {
+        requestBackpressureCounter.increment();
       }
+    }
 
-      if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
-        throw new RuntimeException("unexpected publication state: " + result);
-      }
+    if (result == Publication.ADMIN_ACTION) {
+      System.err.println("Publication.ADMIN_ACTION detected");
+    }
+
+    if (result == Publication.CLOSED || result == Publication.MAX_POSITION_EXCEEDED) {
+      throw new RuntimeException("unexpected publication state: " + result);
     }
   }
 
