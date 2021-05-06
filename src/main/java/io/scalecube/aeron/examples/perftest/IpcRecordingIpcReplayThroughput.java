@@ -35,6 +35,7 @@ import io.aeron.logbuffer.Header;
 import io.scalecube.aeron.examples.AeronHelper;
 import io.scalecube.aeron.examples.meter.LatencyMeter;
 import io.scalecube.aeron.examples.meter.MeterRegistry;
+import io.scalecube.aeron.examples.meter.ThroughputMeter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
@@ -199,6 +200,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
       CountDownLatch recordingLatch = new CountDownLatch(1);
 
       final LatencyMeter latency = meterRegistry.latency("rec_ipc.rep_ipc.latency");
+      final ThroughputMeter tps = meterRegistry.tps("rec_ipc.rep_ipc.tps");
 
       AgentRunner.startOnThread(
           new AgentRunner(
@@ -209,7 +211,10 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
       AgentRunner replayAgentRunner =
           new AgentRunner(
-              NoOpIdleStrategy.INSTANCE, th -> {}, null, new ReplayAgent(subscription, latency));
+              NoOpIdleStrategy.INSTANCE,
+              th -> {},
+              null,
+              new ReplayAgent(subscription, latency, tps));
       replayAgentRunner.run();
 
       recordingLatch.await();
@@ -314,6 +319,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
     private final Subscription subscription;
     private final LatencyMeter latency;
+    private final ThroughputMeter tps;
 
     private Image image;
     private ImageFragmentAssembler fragmentAssembler;
@@ -321,9 +327,10 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
     private long totalLength;
     private long startNs;
 
-    public ReplayAgent(Subscription subscription, LatencyMeter latency) {
+    public ReplayAgent(Subscription subscription, LatencyMeter latency, ThroughputMeter tps) {
       this.subscription = subscription;
       this.latency = latency;
+      this.tps = tps;
     }
 
     @Override
@@ -339,6 +346,8 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
       final long nanoTime = buffer.getLong(offset + 8);
       latency.record(System.nanoTime() - nanoTime);
+
+      tps.record();
 
       totalLength += length + HEADER_LENGTH;
     }
