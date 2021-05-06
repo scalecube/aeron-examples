@@ -52,12 +52,10 @@ import org.agrona.concurrent.UnsafeBuffer;
 import org.agrona.concurrent.status.AtomicCounter;
 import org.agrona.concurrent.status.CountersReader;
 
-public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
-
-  public static final String PUBLICATION_CHANNEL =
-      "aeron:udp?endpoint=localhost:20121|term-length=64m";
+public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
   private static final int REPLAY_STREAM_ID = 101;
+  private static final String RECORDING_CHANNEL = CommonContext.IPC_CHANNEL;
   private static final String REPLAY_CHANNEL = CommonContext.IPC_CHANNEL;
 
   public static final String RECORDING_EVENTS_CHANNEL_ENDPOINT = "localhost:8030";
@@ -78,14 +76,14 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
    * @param args passed to the process.
    */
   public static void main(final String[] args) throws InterruptedException {
-    try (UdpRecordingIpcReplayThroughput test = new UdpRecordingIpcReplayThroughput()) {
+    try (IpcRecordingIpcReplayThroughput test = new IpcRecordingIpcReplayThroughput()) {
       for (int i = 0; i < RUNS; i++) {
         test.streamMessagesForRecording();
       }
     }
   }
 
-  UdpRecordingIpcReplayThroughput() {
+  IpcRecordingIpcReplayThroughput() {
     Path aeronPath = Paths.get(CommonContext.generateRandomDirName());
     String instanceName = aeronPath.getFileName().toString();
     Path archivePath =
@@ -180,11 +178,11 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
   }
 
   private void streamMessagesForRecording() throws InterruptedException {
-    try (Publication publication = aeron.addExclusivePublication(PUBLICATION_CHANNEL, STREAM_ID)) {
+    try (Publication publication = aeron.addExclusivePublication(RECORDING_CHANNEL, STREAM_ID)) {
 
       final long subscriptionId =
           aeronArchive.startRecording(
-              ChannelUri.addSessionId(PUBLICATION_CHANNEL, publication.sessionId()),
+              ChannelUri.addSessionId(RECORDING_CHANNEL, publication.sessionId()),
               STREAM_ID,
               SourceLocation.REMOTE,
               true);
@@ -200,7 +198,7 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
 
       CountDownLatch recordingLatch = new CountDownLatch(1);
 
-      final LatencyMeter latency = meterRegistry.latency("rec_udp.rep_ipc.latency");
+      final LatencyMeter latency = meterRegistry.latency("rec_ipc.rep_ipc.latency");
 
       AgentRunner.startOnThread(
           new AgentRunner(

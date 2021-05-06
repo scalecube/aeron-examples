@@ -41,6 +41,7 @@
     <guava.version>30.1.1-jre</guava.version>
     <classmate.version>1.5.1</classmate.version>
     <checker-qual.version>3.10.0</checker-qual.version>
+    <reactor.version>2020.0.6</reactor.version>
 
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>2.13.2</log4j.version>
@@ -109,6 +110,14 @@
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
         <version>${log4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Reactor -->
+      <dependency>
+        <groupId>io.projectreactor</groupId>
+        <artifactId>reactor-bom</artifactId>
+        <version>${reactor.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -196,6 +205,10 @@
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor</groupId>
+      <artifactId>reactor-core</artifactId>
     </dependency>
     <!-- Micrometer -->
     <dependency>
