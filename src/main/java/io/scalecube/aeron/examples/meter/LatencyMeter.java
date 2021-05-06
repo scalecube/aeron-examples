@@ -1,5 +1,9 @@
 package io.scalecube.aeron.examples.meter;
 
+import static io.scalecube.aeron.examples.meter.LatencyReporter.HIGHEST_TRACKABLE_VALUE;
+import static io.scalecube.aeron.examples.meter.LatencyReporter.LOWEST_TRACKABLE_VALUE;
+import static io.scalecube.aeron.examples.meter.LatencyReporter.NUMBER_OF_SIGNIFICANT_VALUE_DIGITS;
+
 import org.HdrHistogram.Histogram;
 import org.agrona.CloseHelper;
 
@@ -16,8 +20,7 @@ public class LatencyMeter implements AutoCloseable {
     this.listener = listener;
     this.histogram =
         new org.HdrHistogram.Recorder(
-            LatencyReporter.HIGHEST_TRACKABLE_VALUE,
-            LatencyReporter.NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
+            LOWEST_TRACKABLE_VALUE, HIGHEST_TRACKABLE_VALUE, NUMBER_OF_SIGNIFICANT_VALUE_DIGITS);
   }
 
   public String name() {

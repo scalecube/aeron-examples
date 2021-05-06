@@ -35,11 +35,11 @@ import io.aeron.logbuffer.Header;
 import io.scalecube.aeron.examples.AeronHelper;
 import io.scalecube.aeron.examples.meter.LatencyMeter;
 import io.scalecube.aeron.examples.meter.MeterRegistry;
-import io.scalecube.aeron.examples.meter.ThroughputMeter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.agrona.BitUtil;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.Agent;
@@ -56,7 +56,6 @@ import org.agrona.concurrent.status.CountersReader;
 public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
   private static final int REPLAY_STREAM_ID = 101;
-  private static final String RECORDING_CHANNEL = CommonContext.IPC_CHANNEL;
   private static final String REPLAY_CHANNEL = CommonContext.IPC_CHANNEL;
 
   public static final String RECORDING_EVENTS_CHANNEL_ENDPOINT = "localhost:8030";
@@ -70,6 +69,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
   private final UnsafeBuffer buffer =
       new UnsafeBuffer(allocateDirectAligned(MESSAGE_LENGTH, CACHE_LINE_LENGTH));
   private final MeterRegistry meterRegistry;
+  private final LatencyMeter latency;
 
   /**
    * Main method for launching the process.
@@ -92,6 +92,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
             .orElseGet(() -> Paths.get(String.join("-", instanceName, "archive")));
 
     meterRegistry = MeterRegistry.create();
+    latency = meterRegistry.latency("rec_ipc.rep_ipc.latency");
 
     mediaDriver =
         MediaDriver.launch(
@@ -138,6 +139,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
   @Override
   public void close() {
+    CloseHelper.close(meterRegistry);
     CloseHelper.close(aeronArchive);
     CloseHelper.close(aeron);
     CloseHelper.close(archive);
@@ -179,11 +181,12 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
   }
 
   private void streamMessagesForRecording() throws InterruptedException {
-    try (Publication publication = aeron.addExclusivePublication(RECORDING_CHANNEL, STREAM_ID)) {
+    try (Publication publication =
+        aeron.addExclusivePublication(CommonContext.IPC_CHANNEL, STREAM_ID)) {
 
       final long subscriptionId =
           aeronArchive.startRecording(
-              ChannelUri.addSessionId(RECORDING_CHANNEL, publication.sessionId()),
+              ChannelUri.addSessionId(CommonContext.IPC_CHANNEL, publication.sessionId()),
               STREAM_ID,
               SourceLocation.REMOTE,
               true);
@@ -199,9 +202,6 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
       CountDownLatch recordingLatch = new CountDownLatch(1);
 
-      final LatencyMeter latency = meterRegistry.latency("rec_ipc.rep_ipc.latency");
-      final ThroughputMeter tps = meterRegistry.tps("rec_ipc.rep_ipc.tps");
-
       AgentRunner.startOnThread(
           new AgentRunner(
               NoOpIdleStrategy.INSTANCE,
@@ -211,10 +211,7 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
       AgentRunner replayAgentRunner =
           new AgentRunner(
-              NoOpIdleStrategy.INSTANCE,
-              th -> {},
-              null,
-              new ReplayAgent(subscription, latency, tps));
+              NoOpIdleStrategy.INSTANCE, th -> {}, null, new ReplayAgent(subscription, latency));
       replayAgentRunner.run();
 
       recordingLatch.await();
@@ -297,8 +294,12 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
     @Override
     public int doWork() {
+      if (counter >= NUMBER_OF_MESSAGES) {
+        throw new AgentTerminationException("good bye");
+      }
+
       buffer.putLong(0, counter);
-      buffer.putLong(8, System.nanoTime());
+      buffer.putLong(BitUtil.SIZE_OF_LONG, System.nanoTime());
 
       int offer = (int) publication.offer(buffer, 0, MESSAGE_LENGTH);
 
@@ -319,7 +320,6 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
     private final Subscription subscription;
     private final LatencyMeter latency;
-    private final ThroughputMeter tps;
 
     private Image image;
     private ImageFragmentAssembler fragmentAssembler;
@@ -327,10 +327,9 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
     private long totalLength;
     private long startNs;
 
-    public ReplayAgent(Subscription subscription, LatencyMeter latency, ThroughputMeter tps) {
+    public ReplayAgent(Subscription subscription, LatencyMeter latency) {
       this.subscription = subscription;
       this.latency = latency;
-      this.tps = tps;
     }
 
     @Override
@@ -344,10 +343,8 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
     void onMessage(DirectBuffer buffer, int offset, int length, Header header) {
       counter = buffer.getLong(offset);
 
-      final long nanoTime = buffer.getLong(offset + 8);
+      final long nanoTime = buffer.getLong(offset + BitUtil.SIZE_OF_LONG);
       latency.record(System.nanoTime() - nanoTime);
-
-      tps.record();
 
       totalLength += length + HEADER_LENGTH;
     }
@@ -368,6 +365,10 @@ public class IpcRecordingIpcReplayThroughput implements AutoCloseable {
 
     @Override
     public int doWork() {
+      if (counter >= NUMBER_OF_MESSAGES - 1) {
+        throw new AgentTerminationException("good bye");
+      }
+
       final int fragments = image.poll(fragmentAssembler, FRAGMENT_LIMIT);
 
       if (0 == fragments && isImageNotUsable(image)) {

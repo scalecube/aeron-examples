@@ -34,7 +34,7 @@ public class AeronHelper {
   private static final BufferClaim BUFFER_CLAIM = new BufferClaim();
 
   public static final int STREAM_ID = 1001;
-  public static final int NUMBER_OF_MESSAGES = (int) 1e6;
+  public static final int NUMBER_OF_MESSAGES = (int) 10e6;
   public static final int FRAGMENT_LIMIT = 100;
   public static final int MESSAGE_LENGTH = 256;
   public static final int RUNS = 10;

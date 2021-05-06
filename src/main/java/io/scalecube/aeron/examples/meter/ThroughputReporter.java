@@ -1,47 +1,25 @@
 package io.scalecube.aeron.examples.meter;
 
+import static io.aeron.Aeron.NULL_VALUE;
+
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.agrona.CloseHelper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
+import org.agrona.concurrent.Agent;
 
-public class ThroughputReporter implements AutoCloseable {
-
-  public static final Logger LOGGER = LoggerFactory.getLogger(ThroughputReporter.class);
-
-  public static final Duration DEFAULT_REPORT_INTERVAL = Duration.ofSeconds(1);
-
-  private final Duration reportInterval;
+public class ThroughputReporter implements Agent, AutoCloseable {
 
   private final Map<String, ThroughputMeter> meters = new ConcurrentHashMap<>();
 
-  private Disposable disposable;
-
-  public ThroughputReporter() {
-    this(DEFAULT_REPORT_INTERVAL);
-  }
-
-  public ThroughputReporter(Duration reportInterval) {
-    this.reportInterval = reportInterval;
-  }
-
-  public ThroughputReporter start() {
-    disposable =
-        Flux.interval(reportInterval)
-            .subscribe(i -> run(), throwable -> LOGGER.error("[reportInterval] Error:", throwable));
-    return this;
-  }
+  private long reportDeadline = NULL_VALUE;
 
   public ThroughputMeter meter(String name, ThroughputListener... listeners) {
     return meters.computeIfAbsent(
         name,
         s ->
             new ThroughputMeter(
-                name, reportInterval.toNanos(), new CompositeThroughputListener(listeners)));
+                name, Duration.ofSeconds(1).toNanos(), new CompositeThroughputListener(listeners)));
   }
 
   public void remove(ThroughputMeter meter) {
@@ -51,13 +29,29 @@ public class ThroughputReporter implements AutoCloseable {
     }
   }
 
-  private void run() {
-    meters.values().forEach(ThroughputMeter::run);
+  @Override
+  public void close() {
+    meters.values().forEach(ThroughputMeter::close);
   }
 
   @Override
-  public void close() {
-    disposable.dispose();
-    meters.values().forEach(ThroughputMeter::close);
+  public int doWork() {
+    final long nanoTime = System.nanoTime();
+    if (reportDeadline == NULL_VALUE) {
+      reportDeadline = nanoTime + Duration.ofSeconds(1).toNanos();
+    }
+
+    if (nanoTime >= reportDeadline) {
+      meters.values().forEach(ThroughputMeter::run);
+      reportDeadline = NULL_VALUE;
+      return 0;
+    }
+
+    return 1;
+  }
+
+  @Override
+  public String roleName() {
+    return "throughput-reporter";
   }
 }

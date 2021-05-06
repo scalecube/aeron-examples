@@ -42,6 +42,7 @@
     <classmate.version>1.5.1</classmate.version>
     <checker-qual.version>3.10.0</checker-qual.version>
     <reactor.version>2020.0.6</reactor.version>
+    <jmh.version>1.21</jmh.version>
 
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>2.13.2</log4j.version>
@@ -149,6 +150,17 @@
         <artifactId>checker-qual</artifactId>
         <version>${checker-qual.version}</version>
       </dependency>
+      <!-- JMH -->
+      <dependency>
+        <groupId>org.openjdk.jmh</groupId>
+        <artifactId>jmh-core</artifactId>
+        <version>${jmh.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.openjdk.jmh</groupId>
+        <artifactId>jmh-generator-annprocess</artifactId>
+        <version>${jmh.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -218,6 +230,15 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-metrics</artifactId>
+    </dependency>
+    <!-- JMH -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
     </dependency>
   </dependencies>
 

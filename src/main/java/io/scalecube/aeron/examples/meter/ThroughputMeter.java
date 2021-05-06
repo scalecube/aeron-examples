@@ -11,7 +11,6 @@ public class ThroughputMeter implements AutoCloseable {
 
   private final LongAdder totalMessages = new LongAdder();
 
-  private long lastTotalBytes;
   private long lastTotalMessages;
   private long lastTimestamp;
 

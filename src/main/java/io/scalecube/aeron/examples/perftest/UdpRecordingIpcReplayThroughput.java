@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.agrona.BitUtil;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.Agent;
@@ -55,7 +56,7 @@ import org.agrona.concurrent.status.CountersReader;
 public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
 
   public static final String PUBLICATION_CHANNEL =
-      "aeron:udp?endpoint=localhost:20121|term-length=64m";
+      new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint("localhost:20121").build();
 
   private static final int REPLAY_STREAM_ID = 101;
   private static final String REPLAY_CHANNEL = CommonContext.IPC_CHANNEL;
@@ -71,6 +72,7 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
   private final UnsafeBuffer buffer =
       new UnsafeBuffer(allocateDirectAligned(MESSAGE_LENGTH, CACHE_LINE_LENGTH));
   private final MeterRegistry meterRegistry;
+  private final LatencyMeter latency;
 
   /**
    * Main method for launching the process.
@@ -93,6 +95,7 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
             .orElseGet(() -> Paths.get(String.join("-", instanceName, "archive")));
 
     meterRegistry = MeterRegistry.create();
+    latency = meterRegistry.latency("rec_udp.rep_ipc.latency");
 
     mediaDriver =
         MediaDriver.launch(
@@ -139,6 +142,7 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
 
   @Override
   public void close() {
+    CloseHelper.close(meterRegistry);
     CloseHelper.close(aeronArchive);
     CloseHelper.close(aeron);
     CloseHelper.close(archive);
@@ -199,8 +203,6 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
       awaitReplaySubscription(idleStrategy, subscription);
 
       CountDownLatch recordingLatch = new CountDownLatch(1);
-
-      final LatencyMeter latency = meterRegistry.latency("rec_udp.rep_ipc.latency");
 
       AgentRunner.startOnThread(
           new AgentRunner(
@@ -294,8 +296,12 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
 
     @Override
     public int doWork() {
+      if (counter >= NUMBER_OF_MESSAGES) {
+        throw new AgentTerminationException("good bye");
+      }
+
       buffer.putLong(0, counter);
-      buffer.putLong(8, System.nanoTime());
+      buffer.putLong(BitUtil.SIZE_OF_LONG, System.nanoTime());
 
       int offer = (int) publication.offer(buffer, 0, MESSAGE_LENGTH);
 
@@ -361,6 +367,10 @@ public class UdpRecordingIpcReplayThroughput implements AutoCloseable {
 
     @Override
     public int doWork() {
+      if (counter >= NUMBER_OF_MESSAGES - 1) {
+        throw new AgentTerminationException("good bye");
+      }
+
       final int fragments = image.poll(fragmentAssembler, FRAGMENT_LIMIT);
 
       if (0 == fragments && isImageNotUsable(image)) {
