@@ -85,6 +85,7 @@ public class BasicLocalExclusiveRecorder {
             new Archive.Context()
                 .aeron(aeron)
                 .mediaDriverAgentInvoker(mediaDriver.sharedAgentInvoker())
+                .maxConcurrentReplays(3)
                 .errorCounter(
                     new AtomicCounter(
                         mediaDriver.context().countersValuesBuffer(),

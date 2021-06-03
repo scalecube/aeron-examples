@@ -29,6 +29,7 @@ public class BasicReplayRunner {
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
   private static AeronArchive aeronArchive;
+  private static AeronArchive aeronArchive2;
   private static final AtomicBoolean running = new AtomicBoolean(true);
 
   /**
@@ -62,6 +63,16 @@ public class BasicReplayRunner {
                         .endpoint("localhost:8010")
                         .build())
                 .controlResponseChannel(AeronHelper.controlResponseChannel()));
+    aeronArchive2 =
+        AeronArchive.connect(
+            new AeronArchive.Context()
+                .aeronDirectoryName(mediaDriver.aeronDirectoryName())
+                .controlRequestChannel(
+                    new ChannelUriStringBuilder()
+                        .media(UDP_MEDIA)
+                        .endpoint("localhost:8010")
+                        .build())
+                .controlResponseChannel(AeronHelper.controlResponseChannel()));
 
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
     System.out.printf("### aeronDirectoryName: %s%n", aeronDirectoryName);
@@ -74,7 +85,7 @@ public class BasicReplayRunner {
     System.out.printf("### found rd: %s%n", rd);
 
     Subscription subscription =
-        aeronArchive.replay(rd.recordingId, 0, Long.MAX_VALUE, CHANNEL, STREAM_ID);
+        aeronArchive2.replay(rd.recordingId, 0, Long.MAX_VALUE, CHANNEL, STREAM_ID);
     Subscription subscription2 =
         aeronArchive.replay(rd.recordingId, 0, Long.MAX_VALUE, CHANNEL, STREAM_ID);
     Subscription subscription3 =
@@ -86,10 +97,37 @@ public class BasicReplayRunner {
     FragmentAssembler fragmentAssembler3 = new FragmentAssembler(fragmentHandler);
     BackoffIdleStrategy idleStrategy = new BackoffIdleStrategy();
 
+    long deadline = System.currentTimeMillis() + 10000;
+    long deadline2 = System.currentTimeMillis() + 30000; // imageliveness -10s
+
     while (running.get()) {
       idleStrategy.idle(subscription.poll(fragmentAssembler, FRAGMENT_LIMIT));
       idleStrategy.idle(subscription2.poll(fragmentAssembler2, FRAGMENT_LIMIT));
       idleStrategy.idle(subscription3.poll(fragmentAssembler3, FRAGMENT_LIMIT));
+      final long now = System.currentTimeMillis();
+      if (now > deadline) {
+        deadline = System.currentTimeMillis() + 10000000000L;
+        subscription.close();
+        aeronArchive2.close();
+      }
+
+      if (now > deadline2) {
+        deadline = System.currentTimeMillis() + 10000000000L;
+
+        aeronArchive2 =
+            AeronArchive.connect(
+                new AeronArchive.Context()
+                    .aeronDirectoryName(mediaDriver.aeronDirectoryName())
+                    .controlRequestChannel(
+                        new ChannelUriStringBuilder()
+                            .media(UDP_MEDIA)
+                            .endpoint("localhost:8010")
+                            .build())
+                    .controlResponseChannel(AeronHelper.controlResponseChannel()));
+
+        subscription =
+            aeronArchive2.replay(rd.recordingId, 0, Long.MAX_VALUE, CHANNEL, STREAM_ID);
+      }
     }
 
     System.out.println("Shutting down...");
