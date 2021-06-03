@@ -112,7 +112,7 @@ public class BasicReplayRunner {
       }
 
       if (now > deadline2) {
-        deadline = System.currentTimeMillis() + 10000000000L;
+        deadline2 = System.currentTimeMillis() + 10000000000L;
 
         aeronArchive2 =
             AeronArchive.connect(
@@ -138,6 +138,7 @@ public class BasicReplayRunner {
   private static void close() {
     running.set(false);
     CloseHelper.close(aeronArchive);
+    CloseHelper.close(aeronArchive2);
     CloseHelper.close(aeron);
     CloseHelper.close(mediaDriver);
   }
