@@ -103,7 +103,7 @@ public class AeronHelper {
         "Recorded publication, "
             + "channel: %s, "
             + "streamId: %d, "
-            + "session %d, "
+            + "session: %d, "
             + "recordingId: %d, "
             + "recordingPosCounterId: %d, "
             + "recordingSubscriptions(per stream): %d"
@@ -213,7 +213,7 @@ public class AeronHelper {
         "Publication, "
             + "channel: %s, "
             + "streamId: %d, "
-            + "session %d, "
+            + "session: %d, "
             + "initialTermId: %d, "
             + "termLength: %d%n",
         publication.channel(),
@@ -233,7 +233,7 @@ public class AeronHelper {
         "Publication, "
             + "channel: %s, "
             + "streamId: %d, "
-            + "session %d, "
+            + "session: %d, "
             + "initialTermId: %d, "
             + "termId: %d, "
             + "termOffset: %d, "
