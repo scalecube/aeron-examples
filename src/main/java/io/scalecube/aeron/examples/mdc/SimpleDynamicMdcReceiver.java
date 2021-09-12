@@ -56,17 +56,22 @@ public class SimpleDynamicMdcReceiver {
             .endpoint("localhost:0")
             .build();
 
-    Subscription subscription =
+    Subscription subscriptionFoo =
+        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
+    Subscription subscriptionBar =
         aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
 
-    printSubscription(subscription);
+    printSubscription(subscriptionFoo);
+    printSubscription(subscriptionBar);
 
     final FragmentHandler fragmentHandler = printAsciiMessage(STREAM_ID);
-    FragmentAssembler fragmentAssembler = new FragmentAssembler(fragmentHandler);
+    FragmentAssembler fragmentAssemblerFoo = new FragmentAssembler(fragmentHandler);
+    FragmentAssembler fragmentAssemblerBar = new FragmentAssembler(fragmentHandler);
     BackoffIdleStrategy idleStrategy = new BackoffIdleStrategy();
 
     while (running.get()) {
-      idleStrategy.idle(subscription.poll(fragmentAssembler, FRAGMENT_LIMIT));
+      idleStrategy.idle(subscriptionFoo.poll(fragmentAssemblerFoo, FRAGMENT_LIMIT));
+      idleStrategy.idle(subscriptionBar.poll(fragmentAssemblerBar, FRAGMENT_LIMIT));
     }
 
     System.out.println("Shutting down...");
