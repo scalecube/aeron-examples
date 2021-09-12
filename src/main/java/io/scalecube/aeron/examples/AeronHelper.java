@@ -124,12 +124,14 @@ public class AeronHelper {
   public static void printAvailableImage(final Image image) {
     final Subscription subscription = image.subscription();
     System.out.printf(
-        "### %s | [subscription:%d] Available image on %s streamId=%d sessionId=%d from %s%n",
+        "### %s | [subscription:%d] Available image on %s "
+            + "streamId=%d, sessionId=%d, subscription.imageCount=%d from %s%n",
         System.nanoTime(),
         subscription.registrationId(),
         subscription.channel(),
         subscription.streamId(),
         image.sessionId(),
+        subscription.imageCount(),
         image.sourceIdentity());
   }
 
@@ -143,13 +145,15 @@ public class AeronHelper {
     System.out.printf(
         "### %s | "
             + "[subscription:%d] "
-            + "Unavailable image on %s streamId=%d sessionId=%d isClosed=%s isEndOfStream=%s%n",
+            + "Unavailable image on %s "
+            + "streamId=%d, sessionId=%d, isClosed=%s, subscription.imageCount=%d, isEndOfStream=%s%n",
         System.nanoTime(),
         subscription.registrationId(),
         subscription.channel(),
         subscription.streamId(),
         image.sessionId(),
         image.isClosed(),
+        subscription.imageCount(),
         image.isEndOfStream());
   }
 
@@ -254,8 +258,11 @@ public class AeronHelper {
    */
   public static void printSubscription(final Subscription subscription) {
     System.out.printf(
-        "Subscription %s, registrationId=%d, streamId=%d%n",
-        subscription.channel(), subscription.registrationId(), subscription.streamId());
+        "Subscription %s, registrationId=%d, streamId=%d, imageCount=%d%n",
+        subscription.channel(),
+        subscription.registrationId(),
+        subscription.streamId(),
+        subscription.imageCount());
   }
 
   /**
@@ -270,12 +277,41 @@ public class AeronHelper {
             "<<%s>> | "
                 + "session: %d, "
                 + "stream: %d, "
+                + "position: %d, "
                 + "initialTermId: %d, "
                 + "termId: %d, "
                 + "termOffset: %d%n",
             buffer.getStringWithoutLengthAscii(offset, length),
             header.sessionId(),
             streamId,
+            header.position(),
+            header.initialTermId(),
+            header.termId(),
+            header.termOffset());
+  }
+
+  /**
+   * Returns {@link FragmentHandler} instance which prints message to stdout.
+   *
+   * @param streamId streamId
+   * @param label label
+   * @return result
+   */
+  public static FragmentHandler printAsciiMessage(final int streamId, String label) {
+    return (buffer, offset, length, header) ->
+        System.out.printf(
+            "<<%s>> '%s' | "
+                + "session: %d, "
+                + "stream: %d, "
+                + "position: %d, "
+                + "initialTermId: %d, "
+                + "termId: %d, "
+                + "termOffset: %d%n",
+            buffer.getStringWithoutLengthAscii(offset, length),
+            label,
+            header.sessionId(),
+            streamId,
+            header.position(),
             header.initialTermId(),
             header.termId(),
             header.termOffset());
@@ -325,6 +361,19 @@ public class AeronHelper {
     final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
     final long result = publication.offer(buffer, 0, length);
     verifyResult(publication, result);
+  }
+
+  /**
+   * Sends a message and verifies result.
+   *
+   * @param publication publication
+   * @param i just i
+   */
+  public static void sendMessageQuietly(Publication publication, long i) {
+    final UnsafeBuffer buffer = new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
+    final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
+    final long result = publication.offer(buffer, 0, length);
+    verifyResultQuietly(publication, result);
   }
 
   /**
@@ -418,5 +467,32 @@ public class AeronHelper {
     if (!publication.isConnected()) {
       System.out.println("No active subscribers detected");
     }
+  }
+
+  @SuppressWarnings("StatementWithEmptyBody")
+  static void verifyResultQuietly(Publication publication, long result) {
+    if (result > 0) {
+    } else if (result == Publication.BACK_PRESSURED) {
+      System.out.printf(
+          "Offer failed due to back pressure (position: %d)%n", publication.position());
+    } else if (result == Publication.NOT_CONNECTED) {
+      System.out.println("Offer failed because publisher is not connected to a subscriber");
+    } else if (result == Publication.ADMIN_ACTION) {
+      System.out.printf(
+          "Offer failed because of an administration action in the system (position: %d)%n",
+          publication.position());
+    } else if (result == Publication.CLOSED) {
+      System.out.printf(
+          "Offer failed because publication is closed (position: %d)%n", publication.position());
+      throw new RuntimeException("Offer failed because publication is closed");
+    } else if (result == Publication.MAX_POSITION_EXCEEDED) {
+      System.out.printf(
+          "Offer failed due to publication reaching its max position (position: %d)%n",
+          publication.position());
+      throw new RuntimeException("Offer failed due to publication reaching its max position");
+    } else {
+    }
+
+    if (!publication.isConnected()) {}
   }
 }
