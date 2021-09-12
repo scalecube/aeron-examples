@@ -18,6 +18,7 @@ import org.agrona.concurrent.SleepingIdleStrategy;
 public class MultiImageSender {
 
   public static final String ENDPOINT = "localhost:20121";
+  public static final int TERM_LENGTH = 65536;
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
@@ -43,7 +44,12 @@ public class MultiImageSender {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String channel = new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
+    final String channel =
+        new ChannelUriStringBuilder()
+            .media(UDP_MEDIA)
+            .termLength(TERM_LENGTH)
+            .endpoint(ENDPOINT)
+            .build();
 
     ExclusivePublication publication = aeron.addExclusivePublication(channel, STREAM_ID);
 

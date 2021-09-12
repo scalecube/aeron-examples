@@ -21,6 +21,7 @@ import org.agrona.concurrent.SigInt;
 public class MultiImageReceiver {
 
   public static final String ENDPOINT = "localhost:20121";
+  public static final int TERM_LENGTH = 65536;
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
@@ -48,8 +49,12 @@ public class MultiImageReceiver {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String channel =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).termLength(65536).endpoint(ENDPOINT).build();
+    final String channel =
+        new ChannelUriStringBuilder()
+            .media(UDP_MEDIA)
+            .termLength(TERM_LENGTH)
+            .endpoint(ENDPOINT)
+            .build();
 
     // yes, several subscriptions on the same channel
     Subscription subscription = aeron.addSubscription(channel, STREAM_ID);
