@@ -17,9 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleDynamicMdsSender2 {
+public class DynamicMdsSender1 {
 
-  public static final String CONTROL_ENDPOINT2 = "localhost:30122";
+  public static final String CONTROL_ENDPOINT = "localhost:30121";
 
   private static final AtomicBoolean running = new AtomicBoolean(true);
   private static MediaDriver mediaDriver;
@@ -31,7 +31,7 @@ public class SimpleDynamicMdsSender2 {
    * @param args args
    */
   public static void main(String[] args) throws InterruptedException {
-    SigInt.register(SimpleDynamicMdsSender2::close);
+    SigInt.register(DynamicMdsSender1::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -49,7 +49,7 @@ public class SimpleDynamicMdsSender2 {
         new ChannelUriStringBuilder()
             .media(UDP_MEDIA)
             .controlMode(MDC_CONTROL_MODE_DYNAMIC)
-            .controlEndpoint(CONTROL_ENDPOINT2)
+            .controlEndpoint(CONTROL_ENDPOINT)
             .build();
 
     ExclusivePublication publication = aeron.addExclusivePublication(channel, STREAM_ID);

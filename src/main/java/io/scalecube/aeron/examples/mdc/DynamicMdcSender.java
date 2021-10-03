@@ -1,6 +1,6 @@
 package io.scalecube.aeron.examples.mdc;
 
-import static io.aeron.CommonContext.MDC_CONTROL_MODE_MANUAL;
+import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.NUMBER_OF_MESSAGES;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
@@ -17,10 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleManualMdcSender {
+public class DynamicMdcSender {
 
-  public static final String ENDPOINT = "localhost:20121";
-  public static final String ENDPOINT2 = "localhost:20122";
+  public static final String CONTROL_ENDPOINT = "localhost:30121";
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
@@ -32,7 +31,7 @@ public class SimpleManualMdcSender {
    * @param args args
    */
   public static void main(String[] args) throws InterruptedException {
-    SigInt.register(SimpleManualMdcSender::close);
+    SigInt.register(DynamicMdcSender::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -47,18 +46,14 @@ public class SimpleManualMdcSender {
     System.out.println("hello, " + context.aeronDirectoryName());
 
     String controlEndpointChannel =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).controlMode(MDC_CONTROL_MODE_MANUAL).build();
+        new ChannelUriStringBuilder()
+            .media(UDP_MEDIA)
+            .controlMode(MDC_CONTROL_MODE_DYNAMIC)
+            .controlEndpoint(CONTROL_ENDPOINT)
+            .build();
 
     ExclusivePublication publication =
         aeron.addExclusivePublication(controlEndpointChannel, STREAM_ID);
-
-    String destinationChannel =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
-    String destinationChannel2 =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT2).build();
-
-    publication.addDestination(destinationChannel);
-    publication.addDestination(destinationChannel2);
 
     printPublication(publication);
 

@@ -1,6 +1,6 @@
-package io.scalecube.aeron.examples.mdc;
+package io.scalecube.aeron.examples.mds;
 
-import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
+import static io.aeron.CommonContext.MDC_CONTROL_MODE_MANUAL;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.FRAGMENT_LIMIT;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
@@ -20,13 +20,14 @@ import org.agrona.CloseHelper;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleDynamicMdcReceiver {
+public class ManualMdsReceiver {
 
-  public static final String CONTROL_ENDPOINT = "localhost:30121";
+  public static final String ENDPOINT = "localhost:20121";
+  public static final String ENDPOINT2 = "localhost:20122";
 
+  private static final AtomicBoolean running = new AtomicBoolean(true);
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
-  private static final AtomicBoolean running = new AtomicBoolean(true);
 
   /**
    * Main runner.
@@ -34,7 +35,7 @@ public class SimpleDynamicMdcReceiver {
    * @param args args
    */
   public static void main(String[] args) {
-    SigInt.register(SimpleDynamicMdcReceiver::close);
+    SigInt.register(ManualMdsReceiver::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -48,30 +49,27 @@ public class SimpleDynamicMdcReceiver {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String channel =
-        new ChannelUriStringBuilder()
-            .media(UDP_MEDIA)
-            .controlMode(MDC_CONTROL_MODE_DYNAMIC)
-            .controlEndpoint(CONTROL_ENDPOINT)
-            .endpoint("localhost:0")
-            .build();
+    String controlChannel =
+        new ChannelUriStringBuilder().media(UDP_MEDIA).controlMode(MDC_CONTROL_MODE_MANUAL).build();
 
-    Subscription subscriptionFoo =
-        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
-    Subscription subscriptionBar =
-        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
+    Subscription subscription = aeron.addSubscription(controlChannel, STREAM_ID);
 
-    printSubscription(subscriptionFoo);
-    printSubscription(subscriptionBar);
+    String destinationChannel =
+        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
+    String destinationChannel2 =
+        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT2).build();
+
+    subscription.addDestination(destinationChannel);
+    subscription.addDestination(destinationChannel2);
+
+    printSubscription(subscription);
 
     final FragmentHandler fragmentHandler = printAsciiMessage(STREAM_ID);
-    FragmentAssembler fragmentAssemblerFoo = new FragmentAssembler(fragmentHandler);
-    FragmentAssembler fragmentAssemblerBar = new FragmentAssembler(fragmentHandler);
+    FragmentAssembler fragmentAssembler = new FragmentAssembler(fragmentHandler);
     BackoffIdleStrategy idleStrategy = new BackoffIdleStrategy();
 
     while (running.get()) {
-      idleStrategy.idle(subscriptionFoo.poll(fragmentAssemblerFoo, FRAGMENT_LIMIT));
-      idleStrategy.idle(subscriptionBar.poll(fragmentAssemblerBar, FRAGMENT_LIMIT));
+      idleStrategy.idle(subscription.poll(fragmentAssembler, FRAGMENT_LIMIT));
     }
 
     System.out.println("Shutting down...");

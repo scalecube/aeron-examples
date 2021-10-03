@@ -1,6 +1,5 @@
-package io.scalecube.aeron.examples.mds;
+package io.scalecube.aeron.examples.mdc;
 
-import static io.aeron.CommonContext.MDC_CONTROL_MODE_MANUAL;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.FRAGMENT_LIMIT;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
@@ -20,14 +19,13 @@ import org.agrona.CloseHelper;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleManualMdsReceiver {
+public class ManualMdcReceiver1 {
 
   public static final String ENDPOINT = "localhost:20121";
-  public static final String ENDPOINT2 = "localhost:20122";
 
-  private static final AtomicBoolean running = new AtomicBoolean(true);
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
+  private static final AtomicBoolean running = new AtomicBoolean(true);
 
   /**
    * Main runner.
@@ -35,7 +33,7 @@ public class SimpleManualMdsReceiver {
    * @param args args
    */
   public static void main(String[] args) {
-    SigInt.register(SimpleManualMdsReceiver::close);
+    SigInt.register(ManualMdcReceiver1::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -49,18 +47,12 @@ public class SimpleManualMdsReceiver {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String controlChannel =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).controlMode(MDC_CONTROL_MODE_MANUAL).build();
+    final AtomicBoolean running = new AtomicBoolean(true);
 
-    Subscription subscription = aeron.addSubscription(controlChannel, STREAM_ID);
+    String channel = new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
 
-    String destinationChannel =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
-    String destinationChannel2 =
-        new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT2).build();
-
-    subscription.addDestination(destinationChannel);
-    subscription.addDestination(destinationChannel2);
+    Subscription subscription =
+        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
 
     printSubscription(subscription);
 

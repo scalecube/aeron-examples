@@ -19,7 +19,7 @@ import org.agrona.CloseHelper;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleDynamicMdsReceiver {
+public class DynamicMdsReceiver {
 
   public static final String CONTROL_ENDPOINT = "localhost:30121";
   public static final String CONTROL_ENDPOINT2 = "localhost:30122";
@@ -34,7 +34,7 @@ public class SimpleDynamicMdsReceiver {
    * @param args args
    */
   public static void main(String[] args) {
-    SigInt.register(SimpleDynamicMdsReceiver::close);
+    SigInt.register(DynamicMdsReceiver::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();

@@ -19,9 +19,9 @@ import org.agrona.CloseHelper;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleManualMdcReceiver1 {
+public class ManualMdcReceiver2 {
 
-  public static final String ENDPOINT = "localhost:20121";
+  public static final String ENDPOINT = "localhost:20122";
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
@@ -33,7 +33,7 @@ public class SimpleManualMdcReceiver1 {
    * @param args args
    */
   public static void main(String[] args) {
-    SigInt.register(SimpleManualMdcReceiver1::close);
+    SigInt.register(ManualMdcReceiver2::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -52,7 +52,7 @@ public class SimpleManualMdcReceiver1 {
     String channel = new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
 
     Subscription subscription =
-        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
+        aeron.addSubscription(channel, STREAM_ID); // conn: 20122 / logbuffer: 48M
 
     printSubscription(subscription);
 

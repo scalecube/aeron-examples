@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleManualMdsSender1 {
+public class ManualMdsSender1 {
 
   public static final String ENDPOINT = "localhost:20121";
 
@@ -30,7 +30,7 @@ public class SimpleManualMdsSender1 {
    * @param args args
    */
   public static void main(String[] args) throws InterruptedException {
-    SigInt.register(SimpleManualMdsSender1::close);
+    SigInt.register(ManualMdsSender1::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();

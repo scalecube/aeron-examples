@@ -1,5 +1,6 @@
 package io.scalecube.aeron.examples.mds;
 
+import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.NUMBER_OF_MESSAGES;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
@@ -16,9 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleManualMdsSender2 {
+public class DynamicMdsSender2 {
 
-  public static final String ENDPOINT = "localhost:20122";
+  public static final String CONTROL_ENDPOINT2 = "localhost:30122";
 
   private static final AtomicBoolean running = new AtomicBoolean(true);
   private static MediaDriver mediaDriver;
@@ -30,7 +31,7 @@ public class SimpleManualMdsSender2 {
    * @param args args
    */
   public static void main(String[] args) throws InterruptedException {
-    SigInt.register(SimpleManualMdsSender2::close);
+    SigInt.register(DynamicMdsSender2::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -44,7 +45,12 @@ public class SimpleManualMdsSender2 {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String channel = new ChannelUriStringBuilder().media(UDP_MEDIA).endpoint(ENDPOINT).build();
+    String channel =
+        new ChannelUriStringBuilder()
+            .media(UDP_MEDIA)
+            .controlMode(MDC_CONTROL_MODE_DYNAMIC)
+            .controlEndpoint(CONTROL_ENDPOINT2)
+            .build();
 
     ExclusivePublication publication = aeron.addExclusivePublication(channel, STREAM_ID);
 

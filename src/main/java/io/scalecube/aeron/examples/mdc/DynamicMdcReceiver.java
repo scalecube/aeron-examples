@@ -2,22 +2,25 @@ package io.scalecube.aeron.examples.mdc;
 
 import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
-import static io.scalecube.aeron.examples.AeronHelper.NUMBER_OF_MESSAGES;
+import static io.scalecube.aeron.examples.AeronHelper.FRAGMENT_LIMIT;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
-import static io.scalecube.aeron.examples.AeronHelper.printPublication;
+import static io.scalecube.aeron.examples.AeronHelper.printAsciiMessage;
+import static io.scalecube.aeron.examples.AeronHelper.printSubscription;
 
 import io.aeron.Aeron;
 import io.aeron.Aeron.Context;
 import io.aeron.ChannelUriStringBuilder;
-import io.aeron.ExclusivePublication;
+import io.aeron.FragmentAssembler;
+import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
+import io.aeron.logbuffer.FragmentHandler;
 import io.scalecube.aeron.examples.AeronHelper;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
+import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class SimpleDynamicMdcSender {
+public class DynamicMdcReceiver {
 
   public static final String CONTROL_ENDPOINT = "localhost:30121";
 
@@ -30,8 +33,8 @@ public class SimpleDynamicMdcSender {
    *
    * @param args args
    */
-  public static void main(String[] args) throws InterruptedException {
-    SigInt.register(SimpleDynamicMdcSender::close);
+  public static void main(String[] args) {
+    SigInt.register(DynamicMdcReceiver::close);
 
     mediaDriver = MediaDriver.launchEmbedded();
     String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -45,24 +48,33 @@ public class SimpleDynamicMdcSender {
     aeron = Aeron.connect(context);
     System.out.println("hello, " + context.aeronDirectoryName());
 
-    String controlEndpointChannel =
+    String channel =
         new ChannelUriStringBuilder()
             .media(UDP_MEDIA)
             .controlMode(MDC_CONTROL_MODE_DYNAMIC)
             .controlEndpoint(CONTROL_ENDPOINT)
+            .endpoint("localhost:0")
             .build();
 
-    ExclusivePublication publication =
-        aeron.addExclusivePublication(controlEndpointChannel, STREAM_ID);
+    Subscription subscriptionFoo =
+        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
+    Subscription subscriptionBar =
+        aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
 
-    printPublication(publication);
+    printSubscription(subscriptionFoo);
+    printSubscription(subscriptionBar);
 
-    for (long i = 0; i < NUMBER_OF_MESSAGES; i++) {
-      AeronHelper.sendMessage(publication, i);
-      Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+    final FragmentHandler fragmentHandler = printAsciiMessage(STREAM_ID);
+    FragmentAssembler fragmentAssemblerFoo = new FragmentAssembler(fragmentHandler);
+    FragmentAssembler fragmentAssemblerBar = new FragmentAssembler(fragmentHandler);
+    BackoffIdleStrategy idleStrategy = new BackoffIdleStrategy();
+
+    while (running.get()) {
+      idleStrategy.idle(subscriptionFoo.poll(fragmentAssemblerFoo, FRAGMENT_LIMIT));
+      idleStrategy.idle(subscriptionBar.poll(fragmentAssemblerBar, FRAGMENT_LIMIT));
     }
 
-    System.out.println("Done sending");
+    System.out.println("Shutting down...");
 
     close();
   }
