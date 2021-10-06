@@ -4,6 +4,7 @@ import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
 import static io.scalecube.aeron.examples.AeronHelper.printPublication;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.aeron.Aeron;
 import io.aeron.Aeron.Context;
@@ -21,6 +22,8 @@ public class FlowControlMdcSender {
 
   public static final String CONTROL_ENDPOINT = "localhost:30121";
 
+  private static final long NANOS_PER_SECOND = SECONDS.toNanos(1);
+
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
   private static MeterRegistry meterRegistry;
@@ -35,6 +38,12 @@ public class FlowControlMdcSender {
     SigInt.register(() -> running.set(false));
 
     try {
+      final Integer messageRate = Integer.getInteger("messageRate");
+
+      if (messageRate == null) {
+        throw new IllegalArgumentException("messageRate must not be null");
+      }
+
       mediaDriver = MediaDriver.launchEmbedded();
       String aeronDirectoryName = mediaDriver.aeronDirectoryName();
 
@@ -61,8 +70,15 @@ public class FlowControlMdcSender {
       meterRegistry = MeterRegistry.create();
       final ThroughputMeter tps = meterRegistry.tps("sender.tps");
 
+      long sendInterval = NANOS_PER_SECOND / (messageRate * (long) 1e3);
+      long sendIntervalDeadline = -1;
+
       for (long i = 0; running.get(); i++) {
-        AeronHelper.sendMessage(publication, i, tps);
+        long now = System.nanoTime();
+        if (now >= sendIntervalDeadline) {
+          AeronHelper.sendMessage(publication, i, tps);
+          sendIntervalDeadline = now + sendInterval;
+        }
       }
     } catch (Throwable th) {
       close();

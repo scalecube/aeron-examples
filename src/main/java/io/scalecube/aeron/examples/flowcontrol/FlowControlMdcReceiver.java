@@ -30,6 +30,7 @@ public class FlowControlMdcReceiver {
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
+  private static MeterRegistry meterRegistry;
   private static final AtomicBoolean running = new AtomicBoolean(true);
 
   /**
@@ -75,7 +76,7 @@ public class FlowControlMdcReceiver {
 
       final Image image = awaitImage(subscription);
 
-      final MeterRegistry meterRegistry = MeterRegistry.create();
+      meterRegistry = MeterRegistry.create();
       final ThroughputMeter tps =
           meterRegistry.tps(receiverCategory.replace("\\s+", "") + ".receiver.tps");
 
@@ -121,5 +122,6 @@ public class FlowControlMdcReceiver {
   private static void close() {
     CloseHelper.close(aeron);
     CloseHelper.close(mediaDriver);
+    CloseHelper.close(meterRegistry);
   }
 }
