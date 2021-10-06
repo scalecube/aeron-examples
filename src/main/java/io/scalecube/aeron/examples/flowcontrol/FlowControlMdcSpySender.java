@@ -1,39 +1,50 @@
 package io.scalecube.aeron.examples.flowcontrol;
 
+import static io.aeron.ChannelUri.SPY_QUALIFIER;
 import static io.aeron.CommonContext.MDC_CONTROL_MODE_DYNAMIC;
 import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.FRAGMENT_LIMIT;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
 import static io.scalecube.aeron.examples.AeronHelper.printAsciiMessage;
+import static io.scalecube.aeron.examples.AeronHelper.printPublication;
 import static io.scalecube.aeron.examples.AeronHelper.printSubscription;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.aeron.Aeron;
 import io.aeron.Aeron.Context;
 import io.aeron.ChannelUriStringBuilder;
+import io.aeron.ExclusivePublication;
 import io.aeron.FragmentAssembler;
 import io.aeron.Image;
 import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
-import io.aeron.logbuffer.FragmentHandler;
 import io.scalecube.aeron.examples.AeronHelper;
 import io.scalecube.aeron.examples.meter.MeterRegistry;
 import io.scalecube.aeron.examples.meter.ThroughputMeter;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.CloseHelper;
+import org.agrona.concurrent.Agent;
+import org.agrona.concurrent.AgentRunner;
+import org.agrona.concurrent.AgentTerminationException;
 import org.agrona.concurrent.BackoffIdleStrategy;
+import org.agrona.concurrent.NoOpIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class FlowControlMdcReceiver {
+public class FlowControlMdcSpySender {
 
   public static final String CONTROL_ENDPOINT = "localhost:30121";
 
+  private static final long NANOS_PER_SECOND = SECONDS.toNanos(1);
+
   private static final Integer pollDelayMillis = Integer.getInteger("pollDelayMillis");
-  private static final String receiverCategory = System.getProperty("receiverCategory");
+  private static final Integer messageRate = Integer.getInteger("messageRate");
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
   private static MeterRegistry meterRegistry;
+  private static AgentRunner agentRunner;
+
   private static final AtomicBoolean running = new AtomicBoolean(true);
 
   /**
@@ -45,8 +56,8 @@ public class FlowControlMdcReceiver {
     SigInt.register(() -> running.set(false));
 
     try {
-      if (receiverCategory == null) {
-        throw new IllegalArgumentException("receiverCategory must not be null");
+      if (messageRate == null) {
+        throw new IllegalArgumentException("messageRate must not be null");
       }
 
       mediaDriver = MediaDriver.launchEmbedded();
@@ -61,32 +72,33 @@ public class FlowControlMdcReceiver {
       aeron = Aeron.connect(context);
       System.out.println("hello, " + context.aeronDirectoryName());
 
-      String channel =
+      String pubChannel =
           new ChannelUriStringBuilder()
               .media(UDP_MEDIA)
+              .spiesSimulateConnection(true)
               .controlMode(MDC_CONTROL_MODE_DYNAMIC)
               .controlEndpoint(CONTROL_ENDPOINT)
-              .endpoint("localhost:0")
               .build();
 
-      Subscription subscription =
-          aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
+      ExclusivePublication publication = aeron.addExclusivePublication(pubChannel, STREAM_ID);
 
-      printSubscription(subscription);
-
-      final Image image = awaitImage(subscription);
+      printPublication(publication);
 
       meterRegistry = MeterRegistry.create();
-      final ThroughputMeter tps =
-          meterRegistry.tps(receiverCategory.replace("\\s+", "") + ".receiver.tps");
+      final ThroughputMeter tps = meterRegistry.tps("sender.tps");
 
-      final FragmentHandler fragmentHandler = printAsciiMessage(tps);
-      final FragmentAssembler fragmentAssembler = new FragmentAssembler(fragmentHandler);
+      long sendInterval = NANOS_PER_SECOND / (messageRate * (long) 1e3);
+      long sendIntervalDeadline = -1;
 
-      while (running.get()) {
-        pollImageUntilClosed(fragmentAssembler, image, FRAGMENT_LIMIT);
-        if (pollDelayMillis != null && pollDelayMillis > 0) {
-          TimeUnit.MILLISECONDS.sleep(pollDelayMillis);
+      final SpyAgent spyAgent = new SpyAgent();
+      agentRunner = new AgentRunner(NoOpIdleStrategy.INSTANCE, throwable -> {}, null, spyAgent);
+      AgentRunner.startOnThread(agentRunner);
+
+      for (long i = 0; running.get() && !spyAgent.closed; i++) {
+        long now = System.nanoTime();
+        if (now >= sendIntervalDeadline) {
+          AeronHelper.sendMessage(publication, i, tps);
+          sendIntervalDeadline = now + sendInterval;
         }
       }
     } catch (Throwable th) {
@@ -110,18 +122,68 @@ public class FlowControlMdcReceiver {
     return subscription.imageAtIndex(0);
   }
 
-  private static void pollImageUntilClosed(
+  private static int pollImageUntilClosed(
       FragmentAssembler fragmentAssembler, Image image, int fragmentLimit) {
     if (image.isClosed()) {
       throw new RuntimeException("Image is closed, image: " + image);
     } else {
-      image.poll(fragmentAssembler, fragmentLimit);
+      return image.poll(fragmentAssembler, fragmentLimit);
     }
   }
 
   private static void close() {
+    CloseHelper.close(agentRunner);
     CloseHelper.close(meterRegistry);
     CloseHelper.close(aeron);
     CloseHelper.close(mediaDriver);
+  }
+
+  private static class SpyAgent implements Agent {
+
+    private Image image;
+    private FragmentAssembler fragmentAssembler;
+
+    private volatile boolean closed;
+
+    @Override
+    public void onStart() {
+      String subChannel =
+          new ChannelUriStringBuilder()
+              .media(UDP_MEDIA)
+              .prefix(SPY_QUALIFIER)
+              .controlEndpoint(CONTROL_ENDPOINT)
+              .build();
+
+      final Subscription subscription = aeron.addSubscription(subChannel, STREAM_ID);
+      printSubscription(subscription);
+
+      image = awaitImage(subscription);
+
+      ThroughputMeter tps = meterRegistry.tps("spy.tps");
+      fragmentAssembler = new FragmentAssembler(printAsciiMessage(tps));
+    }
+
+    @Override
+    public int doWork() {
+      try {
+        final int work = pollImageUntilClosed(fragmentAssembler, image, FRAGMENT_LIMIT);
+        if (pollDelayMillis != null && pollDelayMillis > 0) {
+          TimeUnit.MILLISECONDS.sleep(pollDelayMillis);
+        }
+        return work;
+      } catch (Throwable th) {
+        throw new AgentTerminationException(th);
+      }
+    }
+
+    @Override
+    public void onClose() {
+      closed = true;
+    }
+
+    @Override
+    public String roleName() {
+      return "spy-agent";
+    }
   }
 }

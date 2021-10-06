@@ -91,8 +91,8 @@ public class FlowControlMdcSender {
   }
 
   private static void close() {
+    CloseHelper.close(meterRegistry);
     CloseHelper.close(aeron);
     CloseHelper.close(mediaDriver);
-    CloseHelper.close(meterRegistry);
   }
 }
