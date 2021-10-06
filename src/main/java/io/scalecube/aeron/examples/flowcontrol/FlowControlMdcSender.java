@@ -44,6 +44,8 @@ public class FlowControlMdcSender {
         throw new IllegalArgumentException("messageRate must not be null");
       }
 
+      System.out.printf("### messageRate: %s%n", messageRate);
+
       mediaDriver = MediaDriver.launchEmbedded();
       String aeronDirectoryName = mediaDriver.aeronDirectoryName();
 

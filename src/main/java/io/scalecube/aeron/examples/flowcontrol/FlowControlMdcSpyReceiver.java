@@ -6,14 +6,11 @@ import static io.aeron.CommonContext.UDP_MEDIA;
 import static io.scalecube.aeron.examples.AeronHelper.FRAGMENT_LIMIT;
 import static io.scalecube.aeron.examples.AeronHelper.STREAM_ID;
 import static io.scalecube.aeron.examples.AeronHelper.printAsciiMessage;
-import static io.scalecube.aeron.examples.AeronHelper.printPublication;
 import static io.scalecube.aeron.examples.AeronHelper.printSubscription;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.aeron.Aeron;
 import io.aeron.Aeron.Context;
 import io.aeron.ChannelUriStringBuilder;
-import io.aeron.ExclusivePublication;
 import io.aeron.FragmentAssembler;
 import io.aeron.Image;
 import io.aeron.Subscription;
@@ -31,14 +28,13 @@ import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.NoOpIdleStrategy;
 import org.agrona.concurrent.SigInt;
 
-public class FlowControlMdcSpySender {
+public class FlowControlMdcSpyReceiver {
 
   public static final String CONTROL_ENDPOINT = "localhost:30121";
 
-  private static final long NANOS_PER_SECOND = SECONDS.toNanos(1);
-
+  private static final Integer pollDelayMillis = Integer.getInteger("pollDelayMillis");
   private static final Integer pollSpyDelayMillis = Integer.getInteger("pollSpyDelayMillis");
-  private static final Integer messageRate = Integer.getInteger("messageRate");
+  private static final String receiverCategory = System.getProperty("receiverCategory");
 
   private static MediaDriver mediaDriver;
   private static Aeron aeron;
@@ -56,12 +52,13 @@ public class FlowControlMdcSpySender {
     SigInt.register(() -> running.set(false));
 
     try {
-      if (messageRate == null) {
-        throw new IllegalArgumentException("messageRate must not be null");
+      if (receiverCategory == null) {
+        throw new IllegalArgumentException("receiverCategory must not be null");
       }
 
       System.out.printf(
-          "### messageRate: %s, pollSpyDelayMillis: %s%n", messageRate, pollSpyDelayMillis);
+          "### receiverCategory: %s, pollDelayMillis: %s, pollSpyDelayMillis: %s%n",
+          receiverCategory.replace("\\s+", ""), pollDelayMillis, pollSpyDelayMillis);
 
       mediaDriver = MediaDriver.launchEmbedded();
       String aeronDirectoryName = mediaDriver.aeronDirectoryName();
@@ -78,30 +75,32 @@ public class FlowControlMdcSpySender {
       String channel =
           new ChannelUriStringBuilder()
               .media(UDP_MEDIA)
-              .spiesSimulateConnection(true)
               .controlMode(MDC_CONTROL_MODE_DYNAMIC)
               .controlEndpoint(CONTROL_ENDPOINT)
+              .endpoint("localhost:0")
               .build();
 
-      ExclusivePublication publication = aeron.addExclusivePublication(channel, STREAM_ID);
+      Subscription subscription =
+          aeron.addSubscription(channel, STREAM_ID); // conn: 20121 / logbuffer: 48M
 
-      printPublication(publication);
+      printSubscription(subscription);
+
+      final Image image = awaitImage(subscription);
 
       meterRegistry = MeterRegistry.create();
-      final ThroughputMeter tps = meterRegistry.tps("sender.tps");
-
-      long sendInterval = NANOS_PER_SECOND / (messageRate * (long) 1e3);
-      long sendIntervalDeadline = -1;
+      final ThroughputMeter tps =
+          meterRegistry.tps(receiverCategory.replace("\\s+", "") + ".receiver.tps");
 
       final SpyAgent spyAgent = new SpyAgent();
       agentRunner = new AgentRunner(NoOpIdleStrategy.INSTANCE, throwable -> {}, null, spyAgent);
       AgentRunner.startOnThread(agentRunner);
 
-      for (long i = 0; running.get() && !spyAgent.closed; i++) {
-        long now = System.nanoTime();
-        if (now >= sendIntervalDeadline) {
-          AeronHelper.sendMessage(publication, i, tps);
-          sendIntervalDeadline = now + sendInterval;
+      final FragmentAssembler fragmentAssembler = new FragmentAssembler(printAsciiMessage(tps));
+
+      while (running.get() && !spyAgent.closed) {
+        pollImageUntilClosed(fragmentAssembler, image, FRAGMENT_LIMIT);
+        if (pollDelayMillis != null && pollDelayMillis > 0) {
+          TimeUnit.MILLISECONDS.sleep(pollDelayMillis);
         }
       }
     } catch (Throwable th) {
@@ -162,7 +161,8 @@ public class FlowControlMdcSpySender {
 
       image = awaitImage(subscription);
 
-      ThroughputMeter tps = meterRegistry.tps("spy.sender.tps");
+      ThroughputMeter tps =
+          meterRegistry.tps("spy." + receiverCategory.replace("\\s+", "") + ".receiver.tps");
       fragmentAssembler = new FragmentAssembler(printAsciiMessage(tps));
     }
 

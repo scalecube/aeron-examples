@@ -14,7 +14,6 @@ import io.aeron.FragmentAssembler;
 import io.aeron.Image;
 import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
-import io.aeron.logbuffer.FragmentHandler;
 import io.scalecube.aeron.examples.AeronHelper;
 import io.scalecube.aeron.examples.meter.MeterRegistry;
 import io.scalecube.aeron.examples.meter.ThroughputMeter;
@@ -49,6 +48,10 @@ public class FlowControlMdcReceiver {
         throw new IllegalArgumentException("receiverCategory must not be null");
       }
 
+      System.out.printf(
+          "### receiverCategory: %s, pollDelayMillis: %s%n",
+          receiverCategory.replace("\\s+", ""), pollDelayMillis);
+
       mediaDriver = MediaDriver.launchEmbedded();
       String aeronDirectoryName = mediaDriver.aeronDirectoryName();
 
@@ -80,8 +83,7 @@ public class FlowControlMdcReceiver {
       final ThroughputMeter tps =
           meterRegistry.tps(receiverCategory.replace("\\s+", "") + ".receiver.tps");
 
-      final FragmentHandler fragmentHandler = printAsciiMessage(tps);
-      final FragmentAssembler fragmentAssembler = new FragmentAssembler(fragmentHandler);
+      final FragmentAssembler fragmentAssembler = new FragmentAssembler(printAsciiMessage(tps));
 
       while (running.get()) {
         pollImageUntilClosed(fragmentAssembler, image, FRAGMENT_LIMIT);
