@@ -36,6 +36,7 @@
     <aeron.version>1.32.0</aeron.version>
     <agrona.version>1.9.0</agrona.version>
     <byte-buddy.version>1.10.19</byte-buddy.version>
+    <hdrhistogram.version>2.1.12</hdrhistogram.version>
 
     <slf4j.version>1.7.30</slf4j.version>
     <log4j.version>2.13.2</log4j.version>
@@ -87,6 +88,12 @@
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy-agent</artifactId>
         <version>${byte-buddy.version}</version>
+      </dependency>
+      <!-- HdrHistogram -->
+      <dependency>
+        <groupId>org.hdrhistogram</groupId>
+        <artifactId>HdrHistogram</artifactId>
+        <version>${hdrhistogram.version}</version>
       </dependency>
       <!-- Slf4j -->
       <dependency>
@@ -140,6 +147,11 @@
     <dependency>
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy-agent</artifactId>
+    </dependency>
+    <!-- HdrHistogram -->
+    <dependency>
+      <groupId>org.hdrhistogram</groupId>
+      <artifactId>HdrHistogram</artifactId>
     </dependency>
     <!-- Slf4j -->
     <dependency>

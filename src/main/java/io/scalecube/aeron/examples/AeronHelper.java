@@ -12,6 +12,7 @@ import io.aeron.archive.Archive;
 import io.aeron.archive.client.AeronArchive;
 import io.aeron.archive.status.RecordingPos;
 import io.aeron.logbuffer.FragmentHandler;
+import io.scalecube.aeron.examples.meter.ThroughputMeter;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -318,6 +319,16 @@ public class AeronHelper {
   }
 
   /**
+   * Returns {@link FragmentHandler} instance which prints message to stdout.
+   *
+   * @param tps tps
+   * @return result
+   */
+  public static FragmentHandler printAsciiMessage(ThroughputMeter tps) {
+    return (buffer, offset, length, header) -> tps.record();
+  }
+
+  /**
    * Sends message and verifies result.
    *
    * @param publication publication
@@ -361,6 +372,20 @@ public class AeronHelper {
     final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
     final long result = publication.offer(buffer, 0, length);
     verifyResult(publication, result);
+  }
+
+  /**
+   * Sends a message and verifies result.
+   *
+   * @param publication publication
+   * @param i just i
+   * @param tps tps
+   */
+  public static void sendMessage(Publication publication, long i, ThroughputMeter tps) {
+    final UnsafeBuffer buffer = new UnsafeBuffer(BufferUtil.allocateDirectAligned(256, 64));
+    final int length = buffer.putStringWithoutLengthAscii(0, "Hello World! " + i);
+    final long result = publication.offer(buffer, 0, length);
+    verifyResult(publication, result, tps);
   }
 
   /**
@@ -494,5 +519,24 @@ public class AeronHelper {
     }
 
     if (!publication.isConnected()) {}
+  }
+
+  @SuppressWarnings("StatementWithEmptyBody")
+  static void verifyResult(Publication publication, long result, ThroughputMeter tps) {
+    if (result > 0) {
+      tps.record();
+    } else if (result == Publication.BACK_PRESSURED) {
+      // no-op
+    } else if (result == Publication.NOT_CONNECTED) {
+      // no-op
+    } else if (result == Publication.ADMIN_ACTION) {
+      // no-op
+    } else if (result == Publication.CLOSED) {
+      throw new RuntimeException("Offer failed because publication is closed");
+    } else if (result == Publication.MAX_POSITION_EXCEEDED) {
+      throw new RuntimeException("Offer failed due to publication reaching its max position");
+    } else {
+      throw new RuntimeException("Offer failed due to unknown reason: " + result);
+    }
   }
 }
