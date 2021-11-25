@@ -162,7 +162,7 @@ public class FlowControlMdcSpySender {
 
       image = awaitImage(subscription);
 
-      ThroughputMeter tps = meterRegistry.tps("spy.sender.tps");
+      ThroughputMeter tps = meterRegistry.tps("spy.receiver.tps");
       fragmentAssembler = new FragmentAssembler(printAsciiMessage(tps));
     }
 
